@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import axios from 'axios'
+import { ForecastData, ForecastResponse } from '@/types/weather'
+import { formatDate, groupForecastByDay } from '@/utils/dateHelper'
 
 interface WeatherData {
   name: string
@@ -33,6 +35,7 @@ export default function Weather() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [forecast, setForecast] = useState<ForecastData[]>([])
 
   const fetchWeather = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,10 +45,16 @@ export default function Weather() {
     setError('')
     
     try {
-      const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}`
-      )
-      setWeather(response.data)
+      const [weatherRes, forecastRes] = await Promise.all([
+        axios.get(
+          `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}`
+        ),
+        axios.get<ForecastResponse>(
+          `${process.env.NEXT_PUBLIC_OPENWEATHER_FORECAST_URL}?q=${city}&units=metric&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}`
+        )
+      ])
+      setWeather(weatherRes.data)
+      setForecast(groupForecastByDay(forecastRes.data.list))
     } catch (err) {
       setError('City not found. Please try again.')
       setWeather(null)
@@ -53,6 +62,36 @@ export default function Weather() {
       setLoading(false)
     }
   }
+
+
+  const ForecastDisplay = ({ forecast }: { forecast: ForecastData[] }) => (
+    <div className="glass-card p-6 mt-6">
+      <h3 className="text-2xl font-semibold mb-4">5-Day Forecast</h3>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {forecast.map((day) => (
+          <div key={day.dt} className="glass-card p-4 text-center">
+            <p className="font-medium mb-2">{formatDate(day.dt_txt)}</p>
+            <img
+              src={`https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`}
+              alt={day.weather[0].main}
+              className="w-12 h-12 mx-auto mb-2"
+            />
+            <div className="flex justify-center gap-2">
+              <p className="text-lg font-bold">
+                {Math.round(day.main.temp_max)}°C
+              </p>
+              <p className="text-lg text-gray-600">
+                {Math.round(day.main.temp_min)}°C
+              </p>
+            </div>
+            <p className="text-sm capitalize text-gray-600">
+              {day.weather[0].description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -113,6 +152,9 @@ export default function Weather() {
           </div>
         </div>
       )}
+
+      {forecast.length > 0 && <ForecastDisplay forecast={forecast} />}
+      
     </div>
   )
 }
