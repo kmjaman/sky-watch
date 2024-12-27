@@ -4,6 +4,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { ForecastData, ForecastResponse } from '@/types/weather'
 import { formatDate, groupForecastByDay } from '@/utils/dateHelper'
+import { convertTemperature } from '@/utils/weatherUtils'
 
 interface WeatherData {
   name: string
@@ -36,6 +37,7 @@ export default function Weather() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [forecast, setForecast] = useState<ForecastData[]>([])
+  const [unit, setUnit] = useState<'C' | 'F'>('C')
 
   const fetchWeather = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,10 +80,10 @@ export default function Weather() {
             />
             <div className="flex justify-center gap-2">
               <p className="text-lg font-bold">
-                {Math.round(day.main.temp_max)}°C
+                {convertTemperature(day.main.temp_max, unit)}°
               </p>
               <p className="text-lg text-gray-600">
-                {Math.round(day.main.temp_min)}°C
+                {convertTemperature(day.main.temp_min, unit)}°
               </p>
             </div>
             <p className="text-sm capitalize text-gray-600">
@@ -93,9 +95,26 @@ export default function Weather() {
     </div>
   )
 
+  const UnitToggle = () => (
+    <div className="flex items-center gap-2 ml-4">
+      <button
+        onClick={() => setUnit('C')}
+        className={`px-3 py-1 rounded-lg ${unit === 'C' ? 'bg-primary text-white' : 'bg-white/20'}`}
+      >
+        °C
+      </button>
+      <button
+        onClick={() => setUnit('F')}
+        className={`px-3 py-1 rounded-lg ${unit === 'F' ? 'bg-primary text-white' : 'bg-white/20'}`}
+      >
+        °F
+      </button>
+    </div>
+  )
+
   return (
     <div className="max-w-2xl mx-auto p-4">
-      <form onSubmit={fetchWeather} className="mb-8 flex gap-2">
+      <form onSubmit={fetchWeather} className="mb-8 flex gap-2 items-center">
         <input
           type="text"
           value={city}
@@ -110,6 +129,7 @@ export default function Weather() {
         >
           {loading ? 'Searching...' : 'Search'}
         </button>
+        <UnitToggle />
       </form>
 
       {error && <p className="text-red-500 mb-4">{error}</p>}
@@ -131,11 +151,16 @@ export default function Weather() {
               className="w-20 h-20"
             />
           </div>
-
+          
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="glass-card p-4 text-center">
-              <p className="text-3xl font-bold">{Math.round(weather.main.temp)}°C</p>
+              <p className="text-3xl font-bold">
+                {convertTemperature(weather.main.temp, unit)}°{unit}
+              </p>
               <p className="text-sm text-gray-600">Temperature</p>
+              <div className="mt-2 text-sm">
+                Feels like {convertTemperature(weather.main.feels_like, unit)}°
+              </div>
             </div>
             <div className="glass-card p-4 text-center">
               <p className="text-3xl font-bold">{weather.main.humidity}%</p>
