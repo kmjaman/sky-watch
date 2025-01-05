@@ -4,7 +4,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { ForecastData, ForecastResponse } from '@/types/weather'
 import { formatDate, groupForecastByDay } from '@/utils/dateHelper'
-import { convertTemperature } from '@/utils/weatherUtils'
+import { convertTemperature, getWindDirection, getWindRotation } from '@/utils/weatherUtils'
 
 interface WeatherData {
   name: string
@@ -24,9 +24,14 @@ interface WeatherData {
     description: string
     icon: string
   }[]
+  coord: {
+    lat: number
+    lon: number
+  }
   wind: {
     speed: number
     deg: number
+    gust?: number
   }
   dt: number
 }
@@ -112,6 +117,19 @@ export default function Weather() {
     </div>
   )
 
+  const WindCompass = ({ degrees }: { degrees: number }) => (
+    <div className="relative w-16 h-16">
+      <div className="absolute inset-0 rounded-full bg-white/20"></div>
+      <div
+        className="absolute left-1/2 top-1/2 w-1 h-6 bg-primary transform origin-bottom"
+        style={{
+          transform: `translate(-50%, -100%) rotate(${getWindRotation(degrees)}deg)`,
+        }}
+      ></div>
+      <span className="absolute top-1 left-1/2 transform -translate-x-1/2 text-xs">N</span>
+    </div>
+  )
+
   return (
     <div className="max-w-2xl mx-auto p-4">
       <form onSubmit={fetchWeather} className="mb-8 flex gap-2 items-center">
@@ -151,7 +169,8 @@ export default function Weather() {
               className="w-20 h-20"
             />
           </div>
-          
+
+          {/* Temperature Card */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="glass-card p-4 text-center">
               <p className="text-3xl font-bold">
@@ -160,6 +179,19 @@ export default function Weather() {
               <p className="text-sm text-gray-600">Temperature</p>
               <div className="mt-2 text-sm">
                 Feels like {convertTemperature(weather.main.feels_like, unit)}°
+              </div>
+            </div>
+            {/* Wind Card */}
+            <div className="glass-card p-4 text-center">
+              <div className="flex flex-col items-center">
+                <WindCompass degrees={weather.wind.deg} />
+                <p className="mt-2 text-3xl font-bold">{weather.wind.speed}m/s</p>
+                <p className="text-sm text-gray-600">
+                  {getWindDirection(weather.wind.deg)} Wind
+                </p>
+                {weather.wind.gust && (
+                  <p className="text-sm mt-1">Gusts: {weather.wind.gust}m/s</p>
+                )}
               </div>
             </div>
             <div className="glass-card p-4 text-center">
