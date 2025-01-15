@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import axios from 'axios'
-import { ForecastData, ForecastResponse } from '@/types/weather'
+import { ForecastData, ForecastResponse, UVIndexData } from '@/types/weather'
 import { formatDate, groupForecastByDay } from '@/utils/dateHelper'
 import { convertTemperature, getWindDirection, getWindRotation } from '@/utils/weatherUtils'
+import { getUVIndexColor } from '@/utils/uvIndexColors'
 
 interface WeatherData {
   name: string
@@ -43,6 +44,7 @@ export default function Weather() {
   const [error, setError] = useState('')
   const [forecast, setForecast] = useState<ForecastData[]>([])
   const [unit, setUnit] = useState<'C' | 'F'>('C')
+  const [uvIndex, setUvIndex] = useState<number | null>(null)
 
   const fetchWeather = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +62,7 @@ export default function Weather() {
           `${process.env.NEXT_PUBLIC_OPENWEATHER_FORECAST_URL}?q=${city}&units=metric&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}`
         )
       ])
+      await fetchUVIndex(weatherRes.data.coord.lat, weatherRes.data.coord.lon)
       setWeather(weatherRes.data)
       setForecast(groupForecastByDay(forecastRes.data.list))
     } catch (err) {
@@ -67,6 +70,17 @@ export default function Weather() {
       setWeather(null)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUVIndex = async (lat: number, lon: number) => {
+    try {
+      const response = await axios.get<UVIndexData>(
+        `${process.env.NEXT_PUBLIC_OPENWEATHER_ONECALL_URL}?lat=${lat}&lon=${lon}&exclude=minutely,hourly,daily&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}`
+      )
+      setUvIndex(response.data.current.uvi)
+    } catch (error) {
+      console.error('Error fetching UV index:', error)
     }
   }
 
@@ -104,13 +118,13 @@ export default function Weather() {
     <div className="flex items-center gap-2 ml-4">
       <button
         onClick={() => setUnit('C')}
-        className={`px-3 py-1 rounded-lg ${unit === 'C' ? 'bg-primary text-white' : 'bg-white/20'}`}
+        className={`px-3 py-1 rounded-full ${unit === 'C' ? 'bg-primary text-white' : 'bg-white/20'}`}
       >
         °C
       </button>
       <button
         onClick={() => setUnit('F')}
-        className={`px-3 py-1 rounded-lg ${unit === 'F' ? 'bg-primary text-white' : 'bg-white/20'}`}
+        className={`px-3 py-1 rounded-full ${unit === 'F' ? 'bg-primary text-white' : 'bg-white/20'}`}
       >
         °F
       </button>
@@ -138,12 +152,12 @@ export default function Weather() {
           value={city}
           onChange={(e) => setCity(e.target.value)}
           placeholder="Enter city name"
-          className="flex-1 p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 focus:outline-none focus:ring-2 focus:ring-secondary"
+          className="flex-1 p-3 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 focus:outline-none focus:ring-2 focus:ring-secondary"
         />
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="px-6 py-3 bg-primary text-white hover:bg-blue-700 transition-colors disabled:opacity-50 rounded-full"
         >
           {loading ? 'Searching...' : 'Search'}
         </button>
@@ -194,6 +208,28 @@ export default function Weather() {
                 )}
               </div>
             </div>
+            {/* UV Index Card */}
+            {uvIndex !== null && (
+              <div className="glass-card p-4 text-center">
+                <div
+                  className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${getUVIndexColor(
+                    uvIndex
+                  )} text-white`}
+                >
+                  <span className="text-xl font-bold">{uvIndex.toFixed(1)}</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">UV Index</p>
+                <div className="text-xs mt-1">
+                  {uvIndex < 2
+                    ? 'Low'
+                    : uvIndex < 5
+                    ? 'Moderate'
+                    : uvIndex < 7
+                    ? 'High'
+                    : 'Very High'}
+                </div>
+              </div>
+            )}
             <div className="glass-card p-4 text-center">
               <p className="text-3xl font-bold">{weather.main.humidity}%</p>
               <p className="text-sm text-gray-600">Humidity</p>
