@@ -20,3 +20,9 @@ export interface ForecastData {
       country: string
     }
   }
+
+  export interface UVIndexData {
+    current: {
+      uvi: number
+    }
+  }
